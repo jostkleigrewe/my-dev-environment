@@ -1,0 +1,16 @@
+{
+  "name": "jostkleigrewe/my-dev-environment",
+  "description": "A development environment setup for PHP projects, including Docker configurations for frameworks like  Laravel and Symfony.",
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Sven Jostkleigrewe",
+      "email": "github@jostkleigrewe.com",
+      "homepage": "https://github.com/jostkleigrewe",
+      "role": "Maintainer"
+    }
+  ],
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
