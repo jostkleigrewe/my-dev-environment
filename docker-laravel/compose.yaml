@@ -1,0 +1,126 @@
+#######################################################################
+# STOCK
+#######################################################################
+name: ${DOCKER_PROJECT_NAME}
+
+services:
+
+  #######################################################################
+  # PHP (FPM)
+  #######################################################################
+  php:
+    container_name: ${DOCKER_PROJECT_NAME}-php
+    restart: unless-stopped
+#    user: "1000:1000"
+    build:
+      context: ../docker/image/php-fpm
+      args:
+        - COMPOSER_VERSION=${DOCKER_COMPOSER_VERSION}
+        - PHP_VERSION=${DOCKER_PHP_VERSION}
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - XDEBUG_MODE=debug
+      - XDEBUG_CONFIG=remote_host=host.docker.internal
+    volumes:
+      - "${DOCKER_PROJECT_FOLDER}:/code"
+    expose:
+      - "9000"
+    networks:
+      euripnet:
+        aliases:
+          - "php.${DOCKER_NGINX_HOST}"
+
+
+  #######################################################################
+  # Nginx
+  #######################################################################
+  nginx:
+    container_name: ${DOCKER_PROJECT_NAME}-nginx
+    build: ../docker/image/nginx-laravel
+    restart: unless-stopped
+#    user: "1000:1000"
+#    build:
+#      context: ../docker/image/nginx
+#      dockerfile: ../docker/image/nginx/Dockerfile
+    expose:
+      - "80"
+    volumes:
+      - "${DOCKER_PROJECT_FOLDER}:/code"
+    depends_on:
+      - php
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.aaa.rule=Host(`${DOCKER_NGINX_HOST}`)"
+    environment:
+      - DOCKER_NGINX_HOST=${DOCKER_NGINX_HOST}
+    networks:
+      euripnet:
+        aliases:
+          - "${DOCKER_NGINX_HOST}"
+
+
+
+
+#
+#  # nginx
+#  nginx:
+#    #    user: "1000:1000"
+#    build: ./docker/image/nginx
+#    restart: unless-stopped
+#    depends_on:
+#      - php
+#      - database
+#    volumes:
+#      - "${DOCKER_PROJECT_FOLDER}:/code"
+#    ports:
+#      - ${DOCKER_NGINX_PORT:-80}:80
+#    environment:
+#      - DOCKER_NGINX_HOST=${DOCKER_NGINX_HOST}
+
+
+
+
+
+
+
+
+#  #######################################################################
+#  # Node.js
+#  #######################################################################
+#  node:
+#    image: node:${DOCKER_NODE_VERSION}-alpine
+#    working_dir: /app
+#    volumes:
+#      - .:/app
+#    command: sh -c "npm install && npm run dev"
+#    networks:
+#      app_network:
+#        aliases:
+#          - node
+#
+#  #######################################################################
+#  # MySQL
+#  #######################################################################
+#  mysql:
+#    image: mysql:${DOCKER_MYSQL_VERSION}
+#    environment:
+#      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+#      MYSQL_DATABASE: ${MYSQL_DATABASE}
+#      MYSQL_USER: ${MYSQL_USER}
+#      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+#    volumes:
+#      - mysql-data:/var/lib/mysql
+#    ports:
+#      - "3306:3306"
+#    networks:
+#      app_network:
+#        aliases:
+#          - mysql
+
+volumes:
+  mysql-data:
+
+networks:
+  euripnet:
+    external: true
