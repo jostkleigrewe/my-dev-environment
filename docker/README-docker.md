@@ -158,3 +158,8 @@ Production build
 [4]: http://localhost:9100/
 [5]: https://www.mysql.com/
 [6]: http://localhost:9101/
+
+
+Infos zu traefik
+
+https://doc.traefik.io/traefik/v3.2/getting-started/quick-start/
