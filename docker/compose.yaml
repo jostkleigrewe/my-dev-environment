@@ -120,7 +120,7 @@ services:
   # Postgres
   #######################################################################
   postgres:
-    image: postgres:15-alpine
+    image: postgres:${DOCKER_POSTGRES_VERSION:-17}-alpine
     container_name: ${DOCKER_PROJECT_NAME}-postgres
     restart: unless-stopped
     environment:
