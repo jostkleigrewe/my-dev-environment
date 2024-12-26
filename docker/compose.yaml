@@ -102,7 +102,7 @@ services:
       - PMA_PASSWORD=${MYSQL_ROOT_PASSWORD:-docker}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-docker}
       - PMA_HOST=database
-      - PMA_ARBITRARY=0
+      - PMA_ARBITRARY=1
     depends_on:
       - database
     expose:
@@ -275,16 +275,24 @@ services:
   # Elasticsearch
   #######################################################################
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:${DOCKER_ELASTICSEARCH_VERSION:-8.10.2}
     restart: unless-stopped
     container_name: ${DOCKER_PROJECT_NAME}-elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
     expose:
       - "9200"
     ports:
       - "9200:9200"
+    deploy:
+      resources:
+        limits:
+          memory: 2g # Maximal 2 GB Speicher
+          cpus: "1.0" # Maximal eine CPU
+        reservations:
+          memory: 1g # Mindestens 1
     volumes:
       - type: volume
         source: elasticsearch-volume
@@ -299,7 +307,7 @@ services:
   # Kibana
   #######################################################################
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.10.2
+    image: docker.elastic.co/kibana/kibana:${DOCKER_ELASTICSEARCH_VERSION:-8.10.2}
     restart: unless-stopped
     container_name: ${DOCKER_PROJECT_NAME}-kibana
 #    volumes:
