@@ -1,0 +1,20 @@
+- name: Provision WSL Ubuntu
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Update all packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install common dependencies
+      include_role:
+        name: common
+
+    - name: Setup PHP environment
+      include_role:
+        name: php
+
+    - name: Setup Python environment
+      include_role:
+        name: python

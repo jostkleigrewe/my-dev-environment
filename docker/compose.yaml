@@ -74,6 +74,7 @@ services:
       - type: volume
         source: mysql-volume
         target: /var/lib/mysql
+      - ./image/mysql/initdb/init-docker-user.sql:/docker-entrypoint-initdb.d/init-docker-user.sql:ro
     environment:
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-docker}"
       MYSQL_DATABASE: "${MYSQL_DATABASE:-exampledb}"
@@ -252,9 +253,6 @@ services:
     expose:
       - "9000" # S3 API
       - "9001" # Web-UI
-#    ports:
-#      - "9100:9000" # S3 API
-#      - "9101:9001" # Web-UI
     volumes:
       - type: volume
         source: minio-volume
@@ -358,7 +356,6 @@ services:
           - 'portainer.docker.localhost'
 
 
-
   #######################################################################
   # Redis - Key-Value-Store
   #######################################################################
@@ -372,8 +369,6 @@ services:
 #    ]
 #    environment:
 #      - REDIS_PASSWORD=my_secret_password
-#    ports:
-#      - '6379:6379'
     expose:
       - 6379
     labels:
@@ -559,43 +554,29 @@ services:
 
 
   #######################################################################
-  # nginx
+  # nginx www
   #######################################################################
-#  nginx:
-#    build:
-#      context: .
-#      dockerfile: ./image/nginx/Dockerfile
-#    container_name: ${DOCKER_PROJECT_NAME}-nginx
-#    restart: unless-stopped
-#    ports:
-#      - "8080:80"
-#    volumes:
-#      - "${DOCKER_PROJECT_FOLDER}:/code"
+  nginx-www:
+    build: ./image/nginx
+    container_name: ${DOCKER_PROJECT_NAME}-nginx-www
+    restart: unless-stopped
+    expose:
+      - "80"
+    volumes:
+      - "${DOCKER_PROJECT_FOLDER}:/code"
 #    depends_on:
 #      - php
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.mailhog.rule=Host(`nginx.docker.localhost`)"
-#    networks:
-#      euripnet:
-#        aliases:
-#          - 'nginx.docker.localhost'
-
-
-#  # nginx
-#  nginx:
-#    #    user: "1000:1000"
-#    build: ./image/nginx
-#    restart: unless-stopped
-#    depends_on:
+#    links:
 #      - php
-#      - database
-#    volumes:
-#      - "${DOCKER_PROJECT_FOLDER}:/code"
-#    ports:
-#      - ${DOCKER_NGINX_PORT:-80}:80
-#    environment:
-#      - DOCKER_NGINX_HOST=${DOCKER_NGINX_HOST}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mailhog.rule=Host(`www.docker.localhost`)"
+    environment:
+      - DOCKER_NGINX_HOST='www.docker.localhost'
+    networks:
+      euripnet:
+        aliases:
+          - 'www.docker.localhost'
 
 
   #######################################################################

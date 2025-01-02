@@ -1,0 +1,8 @@
+- name: Install PHP
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - php8.2
+    - php8.2-cli
+    - php8.2-fpm
