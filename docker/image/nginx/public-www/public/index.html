@@ -1,1 +1,386 @@
-test
+<!doctype html>
+<html>
+    <head>
+        <title>My Dev Environment</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="//cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp,container-queries"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            clifford: '#da373d',
+                        }
+                    }
+                }
+            }
+        </script>
+        <style type="text/tailwindcss">
+            @layer utilities {
+                .content-auto {
+                    content-visibility: auto;
+                }
+            }
+        </style>
+    </head>
+    <body>
+    <div class="flex flex-col items-center min-h-screen bg-gray-100">
+        <h1>My Dev Environment</h1>
+
+        <h2>Hosts</h2>
+        <div>
+            <div>
+                <a href="http://traefik.docker.localhost" target="_blank">Traefik</a>
+            </div>
+            <div>
+                <a href="http://whoami.docker.localhost" target="_blank">whoami</a>
+            </div>
+            <div>
+                <a href="http://pma.docker.localhost" target="_blank">phpMyAdmin</a>
+            </div>
+            <div>
+                <a href="http://pgadmin.docker.localhost" target="_blank">pgadmin: UI für Postgres</a>
+            </div>
+            <div>
+                <a href="http://mongo-express.docker.localhost" target="_blank">mongo-express: UI für mongodb</a>
+            </div>
+            <div>
+                <a href="http://localstack.docker.localhost" target="_blank">localstack</a>
+            </div>
+            <div>
+                <a href="http://minio.docker.localhost.docker.localhost" target="_blank">minio.docker.localhost</a>
+            </div>
+            <div>
+                <a href="http://minio-api.docker.localhost.docker.localhost" target="_blank">minio-api.docker.localhost</a>
+            </div>
+            <div>
+                <a href="http://kibana.docker.localhost" target="_blank">kibana</a>
+            </div>
+            <div>
+                <a href="http://portainer.docker.localhost" target="_blank">portainer</a>
+            </div>
+            <div>
+                <a href="http://xxx.docker.localhost" target="_blank">xxx</a>
+            </div>
+        </div>
+        <h2>Projects:</h2>
+        <div>
+            <div>
+                <a href="http://backend-jostkleigrewe-com.docker.localhost/api/doc" target="_blank">backend.jostkleigrewe.com</a>
+            </div>
+            <div>
+                <a href="http://app-eurip-com.docker.localhost/api/doc" target="_blank">app.eurip.com</a>
+            </div>
+            <div>
+                <a href="http://www-coole-hufe-com.docker.localhost/" target="_blank">www.coole-hufe.com</a>
+            </div>
+
+
+
+        </div>
+        <h2>Ports</h2>
+        <div>
+            <div>
+                http://traefik.docker.localhost
+                mysql 3306
+                es 9200
+            </div>
+        </div>
+
+    </div>
+        <pre>
+
+
+            #######################################################################
+            # Redis - Key-Value-Store
+            #######################################################################
+            redis:
+            image: redis:${DOCKER_REDIS_VERSION?latest}
+            restart: unless-stopped
+            container_name: ${DOCKER_PROJECT_NAME}-redis
+            #    command: [
+            #      "redis-server",
+            #      "--requirepass", "my_secret_password"
+            #    ]
+            #    environment:
+            #      - REDIS_PASSWORD=my_secret_password
+            expose:
+            - 6379
+            labels:
+            - "traefik.enable=false"
+            networks:
+            euripnet:
+            aliases:
+            - 'redis.docker.localhost'
+
+
+            #######################################################################
+            # Redis Commander - leichter Web-Client für Redis
+            #######################################################################
+            redis-commander:
+            image: rediscommander/redis-commander:latest
+            restart: unless-stopped
+            container_name: ${DOCKER_PROJECT_NAME}-redis-commander
+            environment:
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+            #      - REDIS_PASSWORD=geheim
+            expose:
+            - "8081"
+            depends_on:
+            - redis
+            #    volumes:
+            #      - type: volume
+            #        source: redis-insight
+            #        target: /data
+            labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.redis-commander.rule=Host(`redis-commander.docker.localhost`)"
+            - "traefik.http.services.redis-commander.loadbalancer.server.port=8081"
+            networks:
+            euripnet:
+            aliases:
+            - 'redis-commander.docker.localhost'
+
+
+            #######################################################################
+            # RedisInsight - erweiterte GUI & Monitoring
+            #######################################################################
+            redis-insight:
+            image: redislabs/redisinsight:latest
+            restart: unless-stopped
+            container_name: ${DOCKER_PROJECT_NAME}-redis-insight
+            environment:
+            - RI_APP_PORT=5540
+            expose:
+            - "5540"
+            depends_on:
+            - redis
+            labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.redis-insight.rule=Host(`redis-insight.docker.localhost`)"
+            - 'traefik.http.services.redis-insight.loadbalancer.server.scheme=http'
+            - "traefik.http.services.redis-insight.loadbalancer.server.port=5540"
+            volumes:
+            - type: volume
+            source: redis-insight-volume
+            target: /data
+            networks:
+            euripnet:
+            aliases:
+            - 'redis-insight.docker.localhost'
+
+
+            #######################################################################
+            # rabbitMQ
+            #######################################################################
+            rabbitmq:
+            image: rabbitmq:${DOCKER_RABBITMQ_VERSION:-4}-management
+            restart: unless-stopped
+            container_name: ${DOCKER_PROJECT_NAME}-rabbitmq
+            environment:
+            RABBITMQ_DEFAULT_USER: 'docker'
+            RABBITMQ_DEFAULT_PASS: 'geheim'
+            expose:
+            - 15672   # Management-UI
+            - 5672    # Standard-AMQP-Port
+            volumes:
+            - type: volume
+            source: rabbitmq-volume
+            target: /var/lib/rabbitmq
+            labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.rabbitmq.rule=Host(`rabbitmq.docker.localhost`)"
+            - 'traefik.http.services.rabbitmq.loadbalancer.server.scheme=http'
+            - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
+            networks:
+            euripnet:
+            aliases:
+            - 'rabbitmq.docker.localhost'
+
+
+            #######################################################################
+            # inbucket
+            #######################################################################
+            inbucket:
+            image: inbucket/inbucket:latest
+            container_name: ${DOCKER_PROJECT_NAME}-inbucket
+            restart: unless-stopped
+            expose:
+            - 9000   # HTTP/Web UI
+            - 2500   # SMTP
+            labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.inbucket.rule=Host(`inbucket.docker.localhost`)"
+            - 'traefik.http.services.inbucket.loadbalancer.server.scheme=http'
+            - "traefik.http.services.inbucket.loadbalancer.server.port=9000"
+            networks:
+            euripnet:
+            aliases:
+            - 'inbucket.docker.localhost'
+
+
+            #######################################################################
+            # maildev
+            #######################################################################
+            maildev:
+            image: maildev/maildev
+            container_name: ${DOCKER_PROJECT_NAME}-maildev
+            restart: unless-stopped
+            expose:
+            - 1080   # HTTP/Web UI
+            - 1025   # SMTP
+            labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.maildev.rule=Host(`maildev.docker.localhost`)"
+            - 'traefik.http.services.maildev.loadbalancer.server.scheme=http'
+            - "traefik.http.services.maildev.loadbalancer.server.port=1080"
+            networks:
+            euripnet:
+            aliases:
+            - 'maildev.docker.localhost'
+
+
+            #######################################################################
+            # mailhog
+            #######################################################################
+            mailhog:
+            image: mailhog/mailhog
+            container_name: ${DOCKER_PROJECT_NAME}-mailhog
+            restart: unless-stopped
+            expose:
+            - 8025   # HTTP/Web UI
+            - 1025   # SMTP
+            labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.mailhog.rule=Host(`mailhog.docker.localhost`)"
+            - 'traefik.http.services.mailhog.loadbalancer.server.scheme=http'
+            - "traefik.http.services.mailhog.loadbalancer.server.port=8025"
+            networks:
+            euripnet:
+            aliases:
+            - 'mailhog.docker.localhost'
+
+
+            #######################################################################
+            # php
+            #######################################################################
+            php:
+            build:
+            context: image/php-fpm
+            args:
+            - COMPOSER_VERSION=${DOCKER_COMPOSER_VERSION:-2}
+            - PHP_VERSION=${DOCKER_PHP_VERSION:-8.3}
+            container_name: ${DOCKER_PROJECT_NAME}-php
+            restart: unless-stopped
+            environment:
+            - APP_ENV=local
+            - APP_DEBUG=true
+            - XDEBUG_MODE=debug
+            - XDEBUG_CONFIG=remote_host=host.docker.internal
+            volumes:
+            - ./image/php-fpm/public:/code:cached
+            expose:
+            - "9000"
+            networks:
+            euripnet:
+            aliases:
+            - 'php.docker.localhost'
+
+
+            #######################################################################
+            # nginx www
+            #######################################################################
+            nginx-www:
+            build: ./image/nginx
+            container_name: ${DOCKER_PROJECT_NAME}-nginx-www
+            restart: unless-stopped
+            expose:
+            - "80"
+            ports:
+            - "7878:80"
+            volumes:
+            - "${DOCKER_PROJECT_FOLDER}/image/nginx/public-www:/code"
+            labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.nginx-www.rule=Host(`www.docker.localhost`)"
+            environment:
+            - DOCKER_NGINX_HOST='www.docker.localhost'
+            networks:
+            euripnet:
+            aliases:
+            - 'www.docker.localhost'
+
+
+            #######################################################################
+            # node
+            #######################################################################
+            node:
+            image: node:${DOCKER_NODE_VERSION}-alpine
+            restart: no
+            container_name: ${DOCKER_PROJECT_NAME}-node
+            volumes:
+            - "${DOCKER_PROJECT_FOLDER}:/code"
+            working_dir: "/code"
+            networks:
+            euripnet:
+            aliases:
+            - 'node.docker.localhost'
+
+
+            #    image: node:20-alpine
+            #    container_name: ${DOCKER_PROJECT_NAME}-node
+            #    restart: unless-stopped
+            #    working_dir: /app
+            #    volumes:
+            #      - ./frontend:/app
+            #    command: sh -c "npm install && npm run serve"
+            #    networks:
+            #      - euripnet
+
+
+            ##
+            ##  # node
+            ##  node:
+            ##    #    user: "1000:1000"
+            ##    image: node:${DOCKER_NODE_VERSION}-alpine
+            ##    restart: no
+            ##    volumes:
+            ##      - "${DOCKER_PROJECT_FOLDER}:/code"
+            ##    working_dir: "/code"
+
+            ##
+            ##  # yarn-watch
+            ##  yarn-watch:
+            ##    #    user: "1000:1000"
+            ##    build:
+            ##      context: ./image/yarn-watch
+            ##      args:
+            ##        - NODE_VERSION=${DOCKER_NODE_VERSION?}
+            ##    restart: no
+            ##    volumes:
+            ##      - "${DOCKER_PROJECT_FOLDER}:/code"
+            ##    working_dir: "/code"
+            #
+
+
+
+            #######################################################################
+            # NETWORKS
+            #######################################################################
+            networks:
+            euripnet:
+            driver: bridge
+            name: euripnet
+            #    ipam:
+            #      driver: default
+            #      config:
+            #        - subnet: 192.168.100.0/24
+
+
+
+        </pre>
+
+    </body>
+</html>

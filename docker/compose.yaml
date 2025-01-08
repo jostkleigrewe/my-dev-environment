@@ -338,10 +338,10 @@ services:
       - type: volume
         source: portainer-volume
         target: /data
-    ports:
-      - "8000:8000"
-      - "9443:9443"
-      - "9000:9000"
+#    ports:
+#      - "8000:8000"
+#      - "9443:9443"
+#      - "9000:9000"
     expose:
       - "8000"  # Edge-Agent
       - "9443"  # Portainer UI HTTPS
@@ -562,15 +562,13 @@ services:
     restart: unless-stopped
     expose:
       - "80"
+    ports:
+      - "7878:80"
     volumes:
-      - "${DOCKER_PROJECT_FOLDER}:/code"
-#    depends_on:
-#      - php
-#    links:
-#      - php
+      - "${DOCKER_PROJECT_FOLDER}/image/nginx/public-www:/code"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mailhog.rule=Host(`www.docker.localhost`)"
+      - "traefik.http.routers.nginx-www.rule=Host(`www.docker.localhost`)"
     environment:
       - DOCKER_NGINX_HOST='www.docker.localhost'
     networks:
