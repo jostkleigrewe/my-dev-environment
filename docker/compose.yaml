@@ -74,7 +74,7 @@ services:
       - type: volume
         source: mysql-volume
         target: /var/lib/mysql
-      - ./image/mysql/initdb/init-docker-user.sql:/docker-entrypoint-initdb.d/init-docker-user.sql:ro
+      - ./image/mysql/initd:/docker-entrypoint-initdb.d:ro
     environment:
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-docker}"
       MYSQL_DATABASE: "${MYSQL_DATABASE:-exampledb}"
@@ -120,210 +120,210 @@ services:
   #######################################################################
   # Postgres
   #######################################################################
-  postgres:
-    image: postgres:${DOCKER_POSTGRES_VERSION:-17}-alpine
-    container_name: ${DOCKER_PROJECT_NAME}-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DOCKER_POSTGRES_USER:-docker}
-      POSTGRES_PASSWORD: ${DOCKER_POSTGRES_PASSWORD:-docker}
-      POSTGRES_DB: ${DOCKER_POSTGRES_DB:-example}
-    expose:
-      - "5432"
-    volumes:
-      - type: volume
-        source: postgres-volume
-        target: /var/lib/postgresql/data
-    networks:
-      euripnet:
-        aliases:
-          - 'postgres.docker.localhost'
+#  postgres:
+#    image: postgres:${DOCKER_POSTGRES_VERSION:-17}-alpine
+#    container_name: ${DOCKER_PROJECT_NAME}-postgres
+#    restart: unless-stopped
+#    environment:
+#      POSTGRES_USER: ${DOCKER_POSTGRES_USER:-docker}
+#      POSTGRES_PASSWORD: ${DOCKER_POSTGRES_PASSWORD:-docker}
+#      POSTGRES_DB: ${DOCKER_POSTGRES_DB:-example}
+#    expose:
+#      - "5432"
+#    volumes:
+#      - type: volume
+#        source: postgres-volume
+#        target: /var/lib/postgresql/data
+#    networks:
+#      euripnet:
+#        aliases:
+#          - 'postgres.docker.localhost'
 
 
   #######################################################################
   # pgadmin: UI für Postgres
   #######################################################################
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: ${DOCKER_PROJECT_NAME}-pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: ${DOCKER_POSTGRES_PASSWORD:-docker}
-    expose:
-      - "80"
-    depends_on:
-      - postgres
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.pgadmin.rule=Host(`pgadmin.docker.localhost`)"
-    networks:
-      euripnet:
-        aliases:
-          - 'pgadmin.docker.localhost'
+#  pgadmin:
+#    image: dpage/pgadmin4:latest
+#    container_name: ${DOCKER_PROJECT_NAME}-pgadmin
+#    restart: unless-stopped
+#    environment:
+#      PGADMIN_DEFAULT_EMAIL: admin@example.com
+#      PGADMIN_DEFAULT_PASSWORD: ${DOCKER_POSTGRES_PASSWORD:-docker}
+#    expose:
+#      - "80"
+#    depends_on:
+#      - postgres
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.pgadmin.rule=Host(`pgadmin.docker.localhost`)"
+#    networks:
+#      euripnet:
+#        aliases:
+#          - 'pgadmin.docker.localhost'
 
 
   #######################################################################
   # mongodb
   #######################################################################
-  mongodb:
-    image: mongo:6
-    container_name: ${DOCKER_PROJECT_NAME}-mongodb
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: docker
-      MONGO_INITDB_ROOT_PASSWORD: docker
-    volumes:
-      - type: volume
-        source: mongodb-volume
-        target: /data/db
-    expose:
-      - "27017"
-    networks:
-      euripnet:
-        aliases:
-          - 'mongodb.docker.localhost'
+#  mongodb:
+#    image: mongo:6
+#    container_name: ${DOCKER_PROJECT_NAME}-mongodb
+#    restart: unless-stopped
+#    environment:
+#      MONGO_INITDB_ROOT_USERNAME: docker
+#      MONGO_INITDB_ROOT_PASSWORD: docker
+#    volumes:
+#      - type: volume
+#        source: mongodb-volume
+#        target: /data/db
+#    expose:
+#      - "27017"
+#    networks:
+#      euripnet:
+#        aliases:
+#          - 'mongodb.docker.localhost'
 
 
   #######################################################################
   # mongo-express: UI für mongodb
   #######################################################################
-  mongo-express:
-    image: mongo-express:latest
-    container_name: ${DOCKER_PROJECT_NAME}-mongo-express
-    restart: unless-stopped
-    environment:
-      ME_CONFIG_MONGODB_SERVER: mongodb.docker.localhost
-      ME_CONFIG_MONGODB_ADMINUSERNAME: docker
-      ME_CONFIG_MONGODB_ADMINPASSWORD: docker
-      ME_CONFIG_BASICAUTH_USERNAME: docker
-      ME_CONFIG_BASICAUTH_PASSWORD: docker
-    expose:
-      - "8081"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.mongo-express.rule=Host(`mongo-express.docker.localhost`)"
-      - "traefik.http.services.mongo-express.loadbalancer.server.port=8081"
-    depends_on:
-      - mongodb
-    networks:
-      euripnet:
-        aliases:
-          - 'mongo-express.docker.localhost'
+#  mongo-express:
+#    image: mongo-express:latest
+#    container_name: ${DOCKER_PROJECT_NAME}-mongo-express
+#    restart: unless-stopped
+#    environment:
+#      ME_CONFIG_MONGODB_SERVER: mongodb.docker.localhost
+#      ME_CONFIG_MONGODB_ADMINUSERNAME: docker
+#      ME_CONFIG_MONGODB_ADMINPASSWORD: docker
+#      ME_CONFIG_BASICAUTH_USERNAME: docker
+#      ME_CONFIG_BASICAUTH_PASSWORD: docker
+#    expose:
+#      - "8081"
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.mongo-express.rule=Host(`mongo-express.docker.localhost`)"
+#      - "traefik.http.services.mongo-express.loadbalancer.server.port=8081"
+#    depends_on:
+#      - mongodb
+#    networks:
+#      euripnet:
+#        aliases:
+#          - 'mongo-express.docker.localhost'
 
 
   #######################################################################
   # localstack
   #######################################################################
-  localstack:
-    image: localstack/localstack:latest
-    container_name: ${DOCKER_PROJECT_NAME}-localstack
-    restart: unless-stopped
-    environment:
-      - SERVICES=s3,sqs,sns,dynamodb,lambda
-      - DEBUG=1
-      - DATA_DIR=/tmp/localstack/data
-#    volumes:
-#      - type: volume
-#        source: localstack-volume
-#        target: /tmp/localstack/data
-    expose:
-      - "4566"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.localstack.rule=Host(`localstack.docker.localhost`)"
-      - "traefik.http.services.localstack.loadbalancer.server.port=4566"
-    networks:
-      euripnet:
-        aliases:
-          - 'localstack.docker.localhost'
+#  localstack:
+#    image: localstack/localstack:latest
+#    container_name: ${DOCKER_PROJECT_NAME}-localstack
+#    restart: unless-stopped
+#    environment:
+#      - SERVICES=s3,sqs,sns,dynamodb,lambda
+#      - DEBUG=1
+#      - DATA_DIR=/tmp/localstack/data
+##    volumes:
+##      - type: volume
+##        source: localstack-volume
+##        target: /tmp/localstack/data
+#    expose:
+#      - "4566"
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.localstack.rule=Host(`localstack.docker.localhost`)"
+#      - "traefik.http.services.localstack.loadbalancer.server.port=4566"
+#    networks:
+#      euripnet:
+#        aliases:
+#          - 'localstack.docker.localhost'
 
 
 #  #######################################################################
 #  # minio
 #  #######################################################################
-  minio:
-    image: minio/minio:latest
-    container_name: ${DOCKER_PROJECT_NAME}-minio
-    restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER: docker
-      MINIO_ROOT_PASSWORD: docker123
-    command: server /data --console-address ":9001"
-    expose:
-      - "9000" # S3 API
-      - "9001" # Web-UI
-    volumes:
-      - type: volume
-        source: minio-volume
-        target: /data
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.minio.rule=Host(`minio.docker.localhost`)"
-      - "traefik.http.services.minio.loadbalancer.server.port=9001"
-      - "traefik.http.routers.minio-api.rule=Host(`minio-api.docker.localhost`)"
-      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
-    networks:
-      euripnet:
-        aliases:
-          - 'minio.docker.localhost'
+#  minio:
+#    image: minio/minio:latest
+#    container_name: ${DOCKER_PROJECT_NAME}-minio
+#    restart: unless-stopped
+#    environment:
+#      MINIO_ROOT_USER: docker
+#      MINIO_ROOT_PASSWORD: docker123
+#    command: server /data --console-address ":9001"
+#    expose:
+#      - "9000" # S3 API
+#      - "9001" # Web-UI
+#    volumes:
+#      - type: volume
+#        source: minio-volume
+#        target: /data
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.minio.rule=Host(`minio.docker.localhost`)"
+#      - "traefik.http.services.minio.loadbalancer.server.port=9001"
+#      - "traefik.http.routers.minio-api.rule=Host(`minio-api.docker.localhost`)"
+#      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
+#    networks:
+#      euripnet:
+#        aliases:
+#          - 'minio.docker.localhost'
 
 
   #######################################################################
   # Elasticsearch
   #######################################################################
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${DOCKER_ELASTICSEARCH_VERSION:-8.10.2}
-    restart: unless-stopped
-    container_name: ${DOCKER_PROJECT_NAME}-elasticsearch
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms1g -Xmx1g
-    expose:
-      - "9200"
-    ports:
-      - "9200:9200"
-    deploy:
-      resources:
-        limits:
-          memory: 2g # Maximal 2 GB Speicher
-          cpus: "1.0" # Maximal eine CPU
-        reservations:
-          memory: 1g # Mindestens 1
-    volumes:
-      - type: volume
-        source: elasticsearch-volume
-        target: /usr/share/elasticsearch/data
-    networks:
-      euripnet:
-        aliases:
-          - 'elasticsearch.docker.localhost'
+#  elasticsearch:
+#    image: docker.elastic.co/elasticsearch/elasticsearch:${DOCKER_ELASTICSEARCH_VERSION:-8.10.2}
+#    restart: unless-stopped
+#    container_name: ${DOCKER_PROJECT_NAME}-elasticsearch
+#    environment:
+#      - discovery.type=single-node
+#      - xpack.security.enabled=false
+#      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+#    expose:
+#      - "9200"
+#    ports:
+#      - "9200:9200"
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 2g # Maximal 2 GB Speicher
+#          cpus: "1.0" # Maximal eine CPU
+#        reservations:
+#          memory: 1g # Mindestens 1
+#    volumes:
+#      - type: volume
+#        source: elasticsearch-volume
+#        target: /usr/share/elasticsearch/data
+#    networks:
+#      euripnet:
+#        aliases:
+#          - 'elasticsearch.docker.localhost'
 
 
   #######################################################################
   # Kibana
   #######################################################################
-  kibana:
-    image: docker.elastic.co/kibana/kibana:${DOCKER_ELASTICSEARCH_VERSION:-8.10.2}
-    restart: unless-stopped
-    container_name: ${DOCKER_PROJECT_NAME}-kibana
-#    volumes:
-#      - ./kibana.yml:/usr/share/kibana/config/kibana.yml
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch.docker.localhost:9200
-    depends_on:
-      - elasticsearch
-    expose:
-      - "5601"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.kibana.rule=Host(`kibana.docker.localhost`)"
-      - "traefik.http.services.kibana.loadbalancer.server.port=5601"
-    networks:
-      euripnet:
-        aliases:
-          - 'kibana.docker.localhost'
+#  kibana:
+#    image: docker.elastic.co/kibana/kibana:${DOCKER_ELASTICSEARCH_VERSION:-8.10.2}
+#    restart: unless-stopped
+#    container_name: ${DOCKER_PROJECT_NAME}-kibana
+##    volumes:
+##      - ./kibana.yml:/usr/share/kibana/config/kibana.yml
+#    environment:
+#      - ELASTICSEARCH_HOSTS=http://elasticsearch.docker.localhost:9200
+#    depends_on:
+#      - elasticsearch
+#    expose:
+#      - "5601"
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.kibana.rule=Host(`kibana.docker.localhost`)"
+#      - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+#    networks:
+#      euripnet:
+#        aliases:
+#          - 'kibana.docker.localhost'
 
 
   #######################################################################
