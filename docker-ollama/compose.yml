@@ -1,0 +1,102 @@
+#######################################################################
+# STOCK
+#######################################################################
+name: ${DOCKER_PROJECT_NAME}
+
+services:
+
+  #######################################################################
+  # OLLAMA
+  #######################################################################
+  ollama:
+    image: ollama/ollama:${DOCKER_OLLAMA_VERSION?latest}
+    restart: unless-stopped
+    container_name: ${DOCKER_PROJECT_NAME}-ollama
+    expose:
+      - 11434
+    ports:
+      - ${DOCKER_OLLAMA_PORT:-11434}:11434
+    volumes:
+      - type: volume
+        source: ollama-volume
+        target: /root/.ollama
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ollama.rule=Host(`ollama.docker.localhost`)"
+      - "traefik.http.services.ollama.loadbalancer.server.port=11434"
+    networks:
+      euripnet:
+        aliases:
+          - 'ollama.docker.localhost'
+
+
+  #######################################################################
+  # QDRANT
+  #######################################################################
+  qdrant:
+    image: qdrant/qdrant:${DOCKER_QDRANT_VERSION?latest}
+    restart: unless-stopped
+    container_name: ${DOCKER_PROJECT_NAME}-qdrant
+    expose:
+      - 6333
+    ports:
+      - ${DOCKER_QDRANT_PORT:-6333}:6333
+    volumes:
+      - type: volume
+        source: qdrant-volume
+        target: /qdrant/storage
+    networks:
+      euripnet:
+        aliases:
+          - 'qdrant.docker.localhost'
+
+
+  #######################################################################
+  # ANYTHING LLM
+  #######################################################################
+  anythingllm:
+    image:  mintplexlabs/anythingllm:${DOCKER_ANYTHINGLLM_VERSION?latest}
+    restart: unless-stopped
+    container_name: ${DOCKER_PROJECT_NAME}-anythingllm
+    expose:
+      - 3001
+    ports:
+      - ${DOCKER_ANYTHINGLLM_PORT:-3001}:3001
+    environment:
+      - VECTOR_DB=qdrant
+      - QDRANT_HOST=http://qdrant:6333
+      - STORAGE_DIR=/app/server/storage
+    depends_on:
+      - qdrant
+      - ollama
+    volumes:
+      - type: volume
+        source: anythingllm-volume
+        target: /app/server/storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.anythingllm.rule=Host(`anythingllm.docker.localhost`)"
+      - "traefik.http.services.anythingllm.loadbalancer.server.port=3001"
+    networks:
+      euripnet:
+        aliases:
+          - 'anythingllm.docker.localhost'
+
+
+#######################################################################
+# NETWORKS
+#######################################################################
+networks:
+  euripnet:
+    external: true
+
+#######################################################################
+# VOLUMES
+#######################################################################
+volumes:
+  ollama-volume:
+    name: ${DOCKER_OLLAMA_VOLUME}
+  qdrant-volume:
+    name: ${DOCKER_QDRANT_VOLUME}
+  anythingllm-volume:
+    name: ${DOCKER_ANYTHINGLLM_VOLUME}
