@@ -1,3 +1,9 @@
+
+## Added services
+
+http://mercure.docker.localhost
+
+
 # Docker-Features for the Symfony Webapp (6.3)
 
 This is the traditional [Symfony][1]-Webapp (Version 6.3)  with some [Docker][2]-Features added for development.

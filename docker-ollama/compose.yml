@@ -20,6 +20,12 @@ services:
       - type: volume
         source: ollama-volume
         target: /root/.ollama
+      - type: bind
+        source: ./data/ollama/install-models.sh
+        target: /usr/local/bin/install-models.sh
+#    environment:
+#      - DOCKER_OLLAMA_AUTO_PULL=${DOCKER_OLLAMA_AUTO_PULL}
+#    entrypoint: ["/usr/local/bin/install-models.sh"]
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ollama.rule=Host(`ollama.docker.localhost`)"
@@ -28,6 +34,33 @@ services:
       euripnet:
         aliases:
           - 'ollama.docker.localhost'
+
+
+  #######################################################################
+  # OLLAMA-WEBUI
+  #######################################################################
+  ollama-webui:
+    image: ghcr.io/ollama-webui/ollama-webui:main
+    restart: unless-stopped
+    container_name: ${DOCKER_PROJECT_NAME}-ollama-webui
+    environment:
+      - 'OLLAMA_BASE_URL=http://ollama:11434'
+    volumes:
+      - type: volume
+        source: ollama-webui-volume
+        target: /app/backend/data
+    expose:
+      - 11434
+    ports:
+      - ${DOCKER_OLLAMA_WEBUI_PORT:-3010}:8080
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ollama-webui.rule=Host(`ollama-webui.docker.localhost`)"
+      - "traefik.http.services.ollama-webui.loadbalancer.server.port=8080"
+    networks:
+      euripnet:
+        aliases:
+          - 'ollama-webui.docker.localhost'
 
 
   #######################################################################
@@ -45,6 +78,10 @@ services:
       - type: volume
         source: qdrant-volume
         target: /qdrant/storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qdrant.rule=Host(`qdrant.docker.localhost`)"
+      - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
     networks:
       euripnet:
         aliases:
@@ -63,16 +100,40 @@ services:
     ports:
       - ${DOCKER_ANYTHINGLLM_PORT:-3001}:3001
     environment:
-      - VECTOR_DB=qdrant
-      - QDRANT_HOST=http://qdrant:6333
       - STORAGE_DIR=/app/server/storage
+#      - VECTOR_DB=qdrant
+#      - QDRANT_HOST=http://qdrant:6333
+#      - OLLAMA_BASE_PATH=http://ollama:11434
+#      - OLLAMA_MODEL=mistral:instruct-q4_0
+#      - SERVER_PORT=3001
+#      - UID='1000'
+#      - GID='1000'
+#      - STORAGE_DIR=/app/server/storage
+#      - LLM_PROVIDER=ollama
+#      - OLLAMA_BASE_PATH=http://ollama-server:11434
+#      - OLLAMA_MODEL_PREF='phi3'
+#      - OLLAMA_MODEL_TOKEN_LIMIT=4096
+#      - EMBEDDING_ENGINE=ollama
+#      - EMBEDDING_BASE_PATH=http://ollama-server:11434
+#      - EMBEDDING_MODEL_PREF=nomic-embed-text:latest
+#      - EMBEDDING_MODEL_MAX_CHUNK_LENGTH=8192
+#      - VECTOR_DB=lancedb
+#      - WHISPER_PROVIDER=local
+#      - TTS_PROVIDER=native
+#      - PASSWORDMINCHAR=8
     depends_on:
       - qdrant
       - ollama
+    cap_add:
+      - SYS_ADMIN
     volumes:
       - type: volume
         source: anythingllm-volume
         target: /app/server/storage
+      - type: bind
+        source: ./data/anythingllm/.env
+        target: /app/server/.env
+#- ./image/mysql/initd:/docker-entrypoint-initdb.d:ro
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.anythingllm.rule=Host(`anythingllm.docker.localhost`)"
@@ -96,6 +157,8 @@ networks:
 volumes:
   ollama-volume:
     name: ${DOCKER_OLLAMA_VOLUME}
+  ollama-webui-volume:
+    name: ${DOCKER_OLLAMA_WEBUI_VOLUME}
   qdrant-volume:
     name: ${DOCKER_QDRANT_VOLUME}
   anythingllm-volume:

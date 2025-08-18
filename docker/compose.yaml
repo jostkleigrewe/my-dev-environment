@@ -92,6 +92,46 @@ services:
 
 
   #######################################################################
+  # Mercure
+  #######################################################################
+  mercure:
+    image: dunglas/mercure
+    restart: unless-stopped
+    container_name: ${DOCKER_PROJECT_NAME}-mercure
+    environment:
+      SERVER_NAME: ':80'
+      MERCURE_PUBLISHER_JWT_KEY: ${DOCKER_MERCURE_PUBLISHER_JWT_KEY}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${DOCKER_MERCURE_SUBSCRIBER_JWT_KEY}
+      # Set the URL of your Symfony project (without trailing slash!) as value of the cors_origins directive
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins * http://127.0.0.1:8000 http://localhost:8000 ${DOCKER_MERCURE_EXTRA_DIRECTIVES}
+#    # Comment the following line to disable the development mode
+    command: /usr/bin/caddy run --config /etc/caddy/dev.Caddyfile
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "https://localhost/healthz"]
+#      timeout: 5s
+#      retries: 5
+#      start_period: 60s
+    volumes:
+      - type: volume
+        source: mercure-data-volume
+        target: /data
+      - type: volume
+        source: mercure-config-volume
+        target: /config
+    expose:
+      - "80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mercure.rule=Host(`mercure.docker.localhost`)"
+      - "traefik.http.services.mercure.loadbalancer.server.port=80"
+    networks:
+      euripnet:
+        aliases:
+          - 'mercure.docker.localhost'
+
+
+  #######################################################################
   # phpMyAdmin
   #######################################################################
   phpmyadmin:
@@ -667,3 +707,7 @@ volumes:
     name: ${DOCKER_LOCALSTACK_VOLUME}
   minio-volume:
     name: ${DOCKER_MINIO_VOLUME}
+  mercure-data-volume:
+    name: ${DOCKER_MERCURE_DATA_VOLUME}
+  mercure-config-volume:
+    name: ${DOCKER_MERCURE_CONFIG_VOLUME}
