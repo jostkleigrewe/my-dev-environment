@@ -13,8 +13,10 @@ server {
         fastcgi_split_path_info ^(.+\.php)(/.*)$;
         include fastcgi_params;
 
+        fastcgi_connect_timeout 300s;
+        fastcgi_send_timeout 3600s;
+        fastcgi_read_timeout 3600s;
         fastcgi_index index.php;
-#        try_files $uri =404;
         fastcgi_param PATH_INFO $fastcgi_path_info;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param DOCUMENT_ROOT $realpath_root;

@@ -1,0 +1,89 @@
+#######################################################################
+# STOCK
+#######################################################################
+name: ${DOCKER_PROJECT_NAME}
+
+services:
+
+  #######################################################################
+  # PHP (FPM)
+  #######################################################################
+  php:
+    container_name: ${DOCKER_PROJECT_NAME}-php
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    build:
+      context: ${DOCKER_DEV_FOLDER}/docker-images/php-fpm-${DOCKER_PHP_VERSION}
+      args:
+        PHP_VERSION: ${DOCKER_PHP_VERSION}
+        PHP_IMAGE: ${DOCKER_PHP_IMAGE}
+        PHP_EXTENSIONS: ${DOCKER_PHP_EXTENSIONS}
+    image: ${DOCKER_PROJECT_NAME}-php:latest
+    env_file: [compose.env]
+    volumes:
+      - "${DOCKER_PROJECT_FOLDER}:/code"
+      - "~/.ssh:/var/www/.ssh:ro"
+      - "./php-dev.ini:/usr/local/etc/php/conf.d/zz-runtime.ini:ro"
+    expose:
+      - "9000"
+    networks:
+      euripnet:
+
+
+  #######################################################################
+  # Nginx
+  #######################################################################
+  nginx:
+    container_name: ${DOCKER_PROJECT_NAME}-nginx
+    build: ${DOCKER_DEV_FOLDER}/docker/image/nginx-symfony
+    restart: unless-stopped
+    #    user: "1000:1000"
+    #    build:
+    #      context: ../docker/image/nginx
+    #      dockerfile: ../docker/image/nginx/Dockerfile
+    expose:
+      - "80"
+    volumes:
+      - "${DOCKER_PROJECT_FOLDER}:/code"
+    depends_on:
+      - php
+    links:
+      - php
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${DOCKER_PROJECT_NAME}.rule=Host(`${DOCKER_NGINX_HOST}`)"
+    environment:
+      - DOCKER_NGINX_HOST=${DOCKER_NGINX_HOST}
+    networks:
+      euripnet:
+        aliases:
+          - "${DOCKER_NGINX_HOST}"
+
+
+  #######################################################################
+  # SYMFONY WORKERS
+  #######################################################################
+
+  # Worker for async message consumption
+  worker-async:
+    container_name: ${DOCKER_PROJECT_NAME}-worker-async
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    image: ${DOCKER_PROJECT_NAME}-php:latest # based on latest php image
+    env_file: [compose.env]
+    volumes:
+      - "${DOCKER_PROJECT_FOLDER}:/code"
+      - "~/.ssh:/var/www/.ssh:ro"
+      - "./php-dev.ini:/usr/local/etc/php/conf.d/zz-runtime.ini:ro"
+    working_dir: /code
+    command: ["bin/console", "messenger:consume", "async", "-vv"]
+    networks:
+      euripnet:
+
+
+#######################################################################
+# NETWORKS
+#######################################################################
+networks:
+  euripnet:
+    external: true

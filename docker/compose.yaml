@@ -395,6 +395,60 @@ services:
         aliases:
           - 'portainer.docker.localhost'
 
+#services:
+#  portainer:
+#    image: portainer/portainer-ce:latest
+#    container_name: portainer
+#    restart: unless-stopped
+#    security_opt:
+#      - no-new-privileges:true
+#    # Portainer-UI. 9443 = HTTPS (empfohlen). Wenn du lokal testen willst: https://SERVER:9443
+#    ports:
+#      - "9443:9443"
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#      - /app/portainer:/data
+#    environment:
+#      # Optional: Logging etwas ruhiger stellen
+#      - LOG_LEVEL=info
+#    networks:
+#      - traefik_proxy
+#    labels:
+#      - traefik.enable=true
+#      # Router (HTTPS)
+#      - traefik.http.routers.portainer.rule=Host(`${PORTAINER_HOST}`)
+#      - traefik.http.routers.portainer.entrypoints=websecure
+#      - traefik.http.routers.portainer.tls=true
+#      # Service → Portainer lauscht intern auf 9443 (HTTPS)
+#      - traefik.http.services.portainer.loadbalancer.server.port=9443
+#      - traefik.http.services.portainer.loadbalancer.server.scheme=https
+#      # Optional: BasicAuth vor das UI hängen (Wert kommt aus .env)
+#      - traefik.http.routers.portainer.middlewares=portainer-auth
+#      - traefik.http.middlewares.portainer-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}
+#
+#  portainer-agent:
+#    image: portainer/agent:latest
+#    container_name: portainer-agent
+#    restart: unless-stopped
+#    # Der Agent liefert "Host and filesystem" – ja, der Mount ist absichtlich so breit.
+#    ports:
+#      - "9001:9001"
+#    environment:
+#      # Optional shared secret, falls du später mehrere Hosts koppelst
+#      - AGENT_SECRET=${PORTAINER_AGENT_SECRET}
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#      - /:/host
+#    networks:
+#      - traefik_proxy
+#
+#volumes:
+#  portainer_data:
+#
+#networks:
+#  traefik_proxy:
+#    external: true
+
 
   #######################################################################
   # Redis - Key-Value-Store
