@@ -12,14 +12,17 @@ services:
   # Traefik - Reverse Proxy
   #######################################################################
   traefik:
-    image: traefik:v${DOCKER_TRAEFIK_VERSION:-3.2}
+    image: traefik:v${DOCKER_TRAEFIK_VERSION:-3.6}
     restart: unless-stopped
     container_name: ${DOCKER_PROJECT_NAME}-traefik
+    user: root
     command:
       # Enables the web UI
       - "--api.insecure=true"
       # tells Traefik to listen to docker
       - "--providers.docker=true"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker.exposedByDefault=false"
       - "--entrypoints.web.address=:80"
 #      - "--entrypoints.websecure.address=:443"
     ports:
