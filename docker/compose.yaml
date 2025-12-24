@@ -764,3 +764,7 @@ volumes:
     name: ${DOCKER_LOCALSTACK_VOLUME}
   minio-volume:
     name: ${DOCKER_MINIO_VOLUME}
+  mercure-data-volume:
+    name: ${DOCKER_MERCURE_DATA_VOLUME}
+  mercure-config-volume:
+    name: ${DOCKER_MERCURE_CONFIG_VOLUME}
