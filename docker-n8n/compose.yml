@@ -1,0 +1,126 @@
+# Keine "version:" mehr; Compose v2 liest die Spezifikation dynamisch.
+
+name: ai-stack
+
+x-common-env: &common-env
+  TZ: ${TZ}
+
+x-common-restart: &common-restart
+  restart: unless-stopped
+  init: true
+  stop_grace_period: 20s
+  pull_policy: always
+
+networks:
+  ai_net:
+
+volumes:
+  pg_data:
+  n8n_data:
+  ollama_data:
+  anythingllm_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai_pg
+    environment:
+      <<: *common-env
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [ai_net]
+    <<: *common-restart
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ai_n8n
+    environment:
+      <<: *common-env
+      N8N_HOST: ${N8N_HOST}
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      N8N_PORT: ${N8N_PORT}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_METRICS: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    # n8n-Image hat Node; triviale Healthcheck-OK
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [ai_net]
+    <<: *common-restart
+    # Optionaler Reverse-Proxy via Traefik (auskommentiert lassen, wenn Plesk/Apache davor hängt)
+    # labels:
+    #   traefik.enable: "true"
+    #   traefik.http.routers.n8n.rule: Host(`${N8N_HOST}`)
+    #   traefik.http.routers.n8n.entrypoints: websecure
+    #   traefik.http.routers.n8n.tls: "true"
+    #   traefik.http.services.n8n.loadbalancer.server.port: "5678"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai_ollama
+    environment:
+      <<: *common-env
+      OLLAMA_ORIGINS: ${OLLAMA_ORIGINS}
+      # OLLAMA_KEEP_ALIVE: 5m   # optional
+    ports:
+      - "${OLLAMA_PORT}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # curl ist im ollama-Image vorhanden
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:11434/api/tags >/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 4s
+      retries: 20
+    networks: [ai_net]
+    <<: *common-restart
+
+  anythingllm:
+    image: mintplexlabs/anythingllm:latest
+    container_name: ai_anythingllm
+    environment:
+      <<: *common-env
+      STORAGE_DIR: /app/server/storage
+      JWT_SECRET: ${ANYTHINGLLM_AUTH_TOKEN}
+      LLM_PROVIDER: ollama
+      OLLAMA_BASE_PATH: http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    ports:
+      - "${ANYTHINGLLM_PORT}:3001"
+    volumes:
+      - anythingllm_data:/app/server/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3001/api/health >/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    networks: [ai_net]
+    <<: *common-restart

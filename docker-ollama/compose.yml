@@ -144,6 +144,39 @@ services:
           - 'anythingllm.docker.localhost'
 
 
+  #######################################################################
+  # N8N
+  #######################################################################
+  n8n:
+    image: n8nio/n8n:${DOCKER_N8N_VERSION:-latest}
+    container_name: ${DOCKER_PROJECT_NAME}-n8n
+    restart: unless-stopped
+    expose:
+      - 5678
+    ports:
+      - ${DOCKER_N8N_PORT:-5678}:5678
+    environment:
+      - GENERIC_TIMEZONE=Europe/Berlin
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${DOCKER_N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${DOCKER_N8N_PASSWORD:-changeme}
+      - N8N_HOST=n8n.docker.localhost
+      - N8N_PORT=5678
+      - N8N_SECURE_COOKIE=false
+    volumes:
+      - type: volume
+        source: n8n-volume
+        target: /home/node/.n8n
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`n8n.docker.localhost`)"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+    networks:
+      euripnet:
+        aliases:
+          - 'n8n.docker.localhost'
+
+
 #######################################################################
 # NETWORKS
 #######################################################################
@@ -163,3 +196,5 @@ volumes:
     name: ${DOCKER_QDRANT_VOLUME}
   anythingllm-volume:
     name: ${DOCKER_ANYTHINGLLM_VOLUME}
+  n8n-volume:
+    name: ${DOCKER_N8N_VOLUME}
