@@ -1,6 +1,6 @@
 
-ARG PHP_VERSION=8.5.1
-ARG PHP_EXTENSIONS="pdo_mysql zip intl mbstring sockets opcache bcmath xsl apcu amqp gd redis xdebug"
+ARG PHP_VERSION=8.5.3
+ARG PHP_EXTENSIONS="pdo_mysql zip intl mbstring sockets opcache bcmath xsl apcu amqp gd redis xdebug sysvsem"
 
 FROM php:${PHP_VERSION}-fpm
 
