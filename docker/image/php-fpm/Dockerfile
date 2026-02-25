@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # install and enable php-extensions
-RUN docker-php-ext-install mysqli zip intl pdo opcache pdo_mysql
+RUN docker-php-ext-install mysqli zip intl pdo opcache pdo_mysql sysvsem
 
 # Zusätzliche Extensions via PECL
 RUN pecl install xdebug redis \
