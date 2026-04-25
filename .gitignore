@@ -1,3 +1,4 @@
 /.idea/
 /_tmp/
 /docker/.env.local.dist
+/CLAUDE.md
