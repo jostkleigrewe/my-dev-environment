@@ -95,26 +95,106 @@ services:
 
 
   #######################################################################
+  # MariaDB 10.x — parallel zu MySQL (für Projekte die Prod-Parität brauchen)
+  #######################################################################
+  mariadb10:
+    image: mariadb:${DOCKER_MARIADB10_VERSION:-10.11}
+    restart: unless-stopped
+    container_name: ${DOCKER_PROJECT_NAME}-mariadb10
+    volumes:
+      - type: volume
+        source: mariadb10-volume
+        target: /var/lib/mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: "${MARIADB10_ROOT_PASSWORD:-docker}"
+      MARIADB_DATABASE: "${MARIADB10_DATABASE:-exampledb}"
+      MARIADB_USER: "${MARIADB10_USER:-docker}"
+      MARIADB_PASSWORD: "${MARIADB10_PASSWORD:-docker}"
+      MARIADB_ROOT_HOST: '%'
+    ports:
+      - ${DOCKER_MARIADB10_PORT:-3307}:3306
+    expose:
+      - 3306
+    networks:
+      euripnet:
+        aliases:
+          - 'mariadb10.docker.localhost'
+
+
+  #######################################################################
+  # MariaDB 12.x — aktuelle Stable (Vector-Datentyp seit 11.7+)
+  #######################################################################
+  mariadb12:
+    image: mariadb:${DOCKER_MARIADB12_VERSION:-12.2}
+    restart: unless-stopped
+    container_name: ${DOCKER_PROJECT_NAME}-mariadb12
+    volumes:
+      - type: volume
+        source: mariadb12-volume
+        target: /var/lib/mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: "${MARIADB12_ROOT_PASSWORD:-docker}"
+      MARIADB_DATABASE: "${MARIADB12_DATABASE:-exampledb}"
+      MARIADB_USER: "${MARIADB12_USER:-docker}"
+      MARIADB_PASSWORD: "${MARIADB12_PASSWORD:-docker}"
+      MARIADB_ROOT_HOST: '%'
+    ports:
+      - ${DOCKER_MARIADB12_PORT:-3308}:3306
+    expose:
+      - 3306
+    networks:
+      euripnet:
+        aliases:
+          - 'mariadb12.docker.localhost'
+
+
+  #######################################################################
   # Mercure
   #######################################################################
+  # DE: 2026-09-28 (Betreiber): von ungepinntem `dunglas/mercure` (0.21.4, dev.Caddyfile, CORS `*`) auf
+  #     Mercure-Protokoll 1.0 gehoben — konfiguriert wie der frühere Projekt-Hub von arma-ai (einziger Nutzer),
+  #     der seitdem diesen gemeinsamen Hub nutzt. Werte in docker/.env (DOCKER_MERCURE_*).
+  #     - `dev.Caddyfile` gibt es in 1.0 nicht mehr → kein `command:`; `debugger` liefert die Oberfläche unter
+  #       /.well-known/mercure/debug/. NICHT `playground` (schaltet anonymous + CORS `*` + Fremd-Tokens ein).
+  #     - `cors_origins *` ist mit Cookie/JWT-Abos nicht erlaubt → explizite Liste.
+  #     - Tokens: HMAC-Keys + `iss` muss in MERCURE_TRUSTED_ISSUERS stehen; `aud` = resource_identifier.
+  #     - Verlauf: bolt mit Deckel (sonst „keeps history forever"). Neue Datei `mercure-v1.db` — die alte
+  #       0.x-Datei `mercure.db` (235 MB) bleibt für einen Rollback liegen und kann danach gelöscht werden.
+  #       Warum Verlauf nötig ist (Hub rotiert SSE nach 480–600 s, Nachlieferung per Last-Event-ID): arma-ai
+  #       docs/deploy/mercure-hub-prod.md.
+  # EN: Mercure protocol 1.0 hub, configured like arma-ai's former project hub (its only user). No dev.Caddyfile,
+  #     explicit CORS list, trusted issuers, capped bolt history in a fresh file (old 0.x DB kept for rollback).
   mercure:
-    image: dunglas/mercure
+    image: dunglas/mercure:v1.0.2
     restart: unless-stopped
     container_name: ${DOCKER_PROJECT_NAME}-mercure
     environment:
       SERVER_NAME: ':80'
-      MERCURE_PUBLISHER_JWT_KEY: ${DOCKER_MERCURE_PUBLISHER_JWT_KEY}
-      MERCURE_SUBSCRIBER_JWT_KEY: ${DOCKER_MERCURE_SUBSCRIBER_JWT_KEY}
-      # Set the URL of your Symfony project (without trailing slash!) as value of the cors_origins directive
+      MERCURE_PUBLISHER_JWT_KEY: '${DOCKER_MERCURE_PUBLISHER_JWT_KEY}'
+      MERCURE_SUBSCRIBER_JWT_KEY: '${DOCKER_MERCURE_SUBSCRIBER_JWT_KEY}'
+      # DE: Leerzeichen-getrennt, exakt gleich dem `iss` der Projekt-Tokens. EN: space-separated, must equal token `iss`.
+      MERCURE_TRUSTED_ISSUERS: '${DOCKER_MERCURE_TRUSTED_ISSUERS:-http://arma-ai-eurip-com.docker.localhost}'
+      # DE: resource_identifier = `aud` der Tokens = öffentliche URL (Projekte publishen intern über den Alias,
+      #     der Browser kommt über Traefik — beide sehen dieselbe URL). cookie_name prefixlos (http).
+      #     DOCKER_MERCURE_EXTRA_DIRECTIVES = Haken für weitere Caddy-Direktiven (je Zeile eine).
+      # EN: aud pinned to the public URL; prefix-less cookie name for plain HTTP; extra directives hook.
       MERCURE_EXTRA_DIRECTIVES: |
-        cors_origins * http://127.0.0.1:8000 http://localhost:8000 ${DOCKER_MERCURE_EXTRA_DIRECTIVES}
-#    # Comment the following line to disable the development mode
-    command: /usr/bin/caddy run --config /etc/caddy/dev.Caddyfile
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "https://localhost/healthz"]
-#      timeout: 5s
-#      retries: 5
-#      start_period: 60s
+        resource_identifier http://mercure.docker.localhost/.well-known/mercure
+        cors_origins ${DOCKER_MERCURE_CORS_ORIGINS:-http://arma-ai-eurip-com.docker.localhost}
+        cookie_name ${DOCKER_MERCURE_COOKIE_NAME:-mercure_access_token}
+        debugger
+        transport bolt {
+          path /data/caddy/mercure-v1.db
+          size 10000
+        }
+        ${DOCKER_MERCURE_EXTRA_DIRECTIVES}
+    healthcheck:
+      # DE: /healthz gibt es in 1.0 nicht mehr — Admin-API im Container. EN: /healthz is gone in 1.0.
+      test: ["CMD", "curl", "-fsS", "http://localhost:2019/mercure/health/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - type: volume
         source: mercure-data-volume
@@ -145,10 +225,14 @@ services:
       - PMA_USER=root
       - PMA_PASSWORD=${MYSQL_ROOT_PASSWORD:-docker}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-docker}
-      - PMA_HOST=database
+      # Multi-Server-Modus: Dropdown im Login mit allen DB-Servern
+      - PMA_HOSTS=database,mariadb10,mariadb12
+      - PMA_VERBOSES=MySQL 8.0,MariaDB 10.11,MariaDB 12.2
       - PMA_ARBITRARY=1
     depends_on:
       - database
+      - mariadb10
+      - mariadb12
     expose:
       - 80
     labels:
@@ -209,50 +293,50 @@ services:
   #######################################################################
   # mongodb
   #######################################################################
-#  mongodb:
-#    image: mongo:6
-#    container_name: ${DOCKER_PROJECT_NAME}-mongodb
-#    restart: unless-stopped
-#    environment:
-#      MONGO_INITDB_ROOT_USERNAME: docker
-#      MONGO_INITDB_ROOT_PASSWORD: docker
-#    volumes:
-#      - type: volume
-#        source: mongodb-volume
-#        target: /data/db
-#    expose:
-#      - "27017"
-#    networks:
-#      euripnet:
-#        aliases:
-#          - 'mongodb.docker.localhost'
+  mongodb:
+    image: mongo:6
+    container_name: ${DOCKER_PROJECT_NAME}-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: docker
+      MONGO_INITDB_ROOT_PASSWORD: docker
+    volumes:
+      - type: volume
+        source: mongodb-volume
+        target: /data/db
+    expose:
+      - "27017"
+    networks:
+      euripnet:
+        aliases:
+          - 'mongodb.docker.localhost'
 
 
   #######################################################################
   # mongo-express: UI für mongodb
   #######################################################################
-#  mongo-express:
-#    image: mongo-express:latest
-#    container_name: ${DOCKER_PROJECT_NAME}-mongo-express
-#    restart: unless-stopped
-#    environment:
-#      ME_CONFIG_MONGODB_SERVER: mongodb.docker.localhost
-#      ME_CONFIG_MONGODB_ADMINUSERNAME: docker
-#      ME_CONFIG_MONGODB_ADMINPASSWORD: docker
-#      ME_CONFIG_BASICAUTH_USERNAME: docker
-#      ME_CONFIG_BASICAUTH_PASSWORD: docker
-#    expose:
-#      - "8081"
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.mongo-express.rule=Host(`mongo-express.docker.localhost`)"
-#      - "traefik.http.services.mongo-express.loadbalancer.server.port=8081"
-#    depends_on:
-#      - mongodb
-#    networks:
-#      euripnet:
-#        aliases:
-#          - 'mongo-express.docker.localhost'
+  mongo-express:
+    image: mongo-express:latest
+    container_name: ${DOCKER_PROJECT_NAME}-mongo-express
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb.docker.localhost
+      ME_CONFIG_MONGODB_ADMINUSERNAME: docker
+      ME_CONFIG_MONGODB_ADMINPASSWORD: docker
+      ME_CONFIG_BASICAUTH_USERNAME: docker
+      ME_CONFIG_BASICAUTH_PASSWORD: docker
+    expose:
+      - "8081"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mongo-express.rule=Host(`mongo-express.docker.localhost`)"
+      - "traefik.http.services.mongo-express.loadbalancer.server.port=8081"
+    depends_on:
+      - mongodb
+    networks:
+      euripnet:
+        aliases:
+          - 'mongo-express.docker.localhost'
 
 
   #######################################################################
@@ -746,6 +830,10 @@ networks:
 volumes:
   mysql-volume:
     name: ${DOCKER_MYSQL_VOLUME}
+  mariadb10-volume:
+    name: ${DOCKER_MARIADB10_VOLUME}
+  mariadb12-volume:
+    name: ${DOCKER_MARIADB12_VOLUME}
   redis-volume:
     name: ${DOCKER_REDIS_VOLUME}
   redis-insight-volume:
